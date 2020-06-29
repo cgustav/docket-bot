@@ -1,106 +1,124 @@
-import { Module, DynamicModule, Inject } from '@nestjs/common';
+import { Module, DynamicModule } from '@nestjs/common';
 import { Client } from 'discord.js';
 import { createDiscordProviders } from './providers';
-import { DiscordClientEvent } from './types/events';
-// import { ConfigModule, registerAs } from '@nestjs/config';
-// import { config } from 'dotenv/types';
-// // import { createDiscordProviders } from './discord.providers';
-// // import { DiscordModuleRegisterOptions } from './interaces/discord-module-register-options';
-// // import { getPreferedTimeoutDuration } from './discord.utils';
-// // import {
-// //   safeGetControllersFromOptions,
-// //   getPreferedProviderName,
-// // } from './discord.utils';r
-
-interface DiscordiaRegisterClientParams {
-  clientToken: string;
-  options: RegisterClientOptions;
-}
-
-interface RegisterClientOptions {
-  /**
-   * @optional
-   * Change the duration (in seconds) within the module say stop
-   * (prevent app to be blocked when discord API is down)
-   * default 30 seconds
-   */
-  timeoutDurationInSeconds?: number;
-  /**
-   * @optional
-   * A list of event to bind
-   */
-  listeners?: ClientListener[];
-  /**
-   * @optional
-   * A list of controller to be instanciated
-   */
-  controllers?: any[];
-}
-
-interface ClientListener {
-  eventName: any;
-  handler: (any) => void;
-}
-
-// const dbs = registerAs('discordia', () => ({
-// //   host: process.env.DATABASE_HOST,
-// //   port: process.env.DATABASE_PORT || 5432,
-// client:
-
-// }));
+import {
+  RegisterClientOptions,
+  DiscordiaRegisterClientParams,
+} from './types/client';
+import { BotClient } from './bot.client';
 
 class DiscordClient {
-  client: Client = new Client();
+  secretToken: string;
+  client?: Client;
+  optionParams: RegisterClientOptions = {
+    controllers: [],
+    listeners: [],
+    timeoutDurationInSeconds: 10000,
+  };
 }
 
 abstract class DiscordClientSingleton {
   static instance = new DiscordClient();
 }
 
-@Module({
-  //   imports: [ConfigModule.forFeature(dbs)],
-})
+@Module({})
 export class DiscordiaModule {
-  static forFeature(options: RegisterClientOptions): DynamicModule {
-    try {
-      let client: Client = DiscordClientSingleton.instance.client;
+  private static pseudo = 'Discordia';
 
-      if (options && options.listeners.length)
-        options.listeners.map(listener => {
-          console.log('Adding listeners from ForFeature');
-          const { eventName, handler } = listener;
-          client.on(eventName, handler);
-        });
+  static resolveClient(): any /*Promise<BotClient>*/ /*BotClient*/ {
+    let { client, secretToken } = DiscordClientSingleton.instance;
 
-      //   return new Promise((resolve, reject) => {
-      //     if (reject) reject('Some error');
-      //     return resolve({
-      //       controllers: options.controllers || [],
-      //       module: DiscordiaModule,
-      //       // providers,
-      //       // exports: providers,
-      //     });
-      //   });
-
-      const pseudo = 'Discordia';
-      const providers = createDiscordProviders(client, pseudo);
-
-      return {
-        // controllers: options.controllers || [],
-        module: DiscordiaModule,
-        providers,
-        exports: providers,
-      };
-    } catch (error) {
-      console.log('Damn bruh!', error);
+    if (!client && secretToken) {
     }
+    // if (!singleton.client)
+    //   DiscordClientSingleton.instance.client = new Client();
+  }
+
+  private static async signInClient(
+    clientToken: string,
+    options?: RegisterClientOptions,
+  ): Promise<BotClient> {
+    return new Promise((resolve, reject) => {
+      let client = new BotClient();
+
+      client.login(clientToken).catch(error => {
+        throw new Error(error.message + ', Cannot Log-in on Discord API');
+      });
+
+      client.on('error', error => {
+        throw new Error(error.message + ', Ups. Something happen.');
+      });
+
+      client.on('ready', () => {
+        console.log('Discord client ready');
+        if (options && options.listeners)
+          // options.listeners.forEach(listener => singleton.client.on(listener.eventName, liste))
+          // clearTimeout(timeout);
+          // if (options) {
+          //   options.listeners?.concat(listeners).map(listener => {
+          //     client.on(listener.eventName, listener.handler);
+          //   });
+          // }
+          // DiscordClientSingleton.instance.client = client;
+          return resolve(client);
+      });
+    });
+  }
+
+  static forFeature(
+    token?: string,
+    options?: RegisterClientOptions,
+  ): DynamicModule {
+    console.log('Adding listeners from ForFeature');
+    console.log('Options: ', options);
+    let instance = DiscordClientSingleton.instance;
+
+    // if (!instance.secretToken || instance.secretToken === undefined)
+    //   instance.secretToken = token;
+
+    // if (!options || options == undefined) {
+    //   console.log('this is null');
+    //   return {
+    //     module: DiscordiaModule,
+    //   };
+    // }
+    if (!options) options = {};
+    console.log('continuing executing');
+
+    // try {
+    // DiscordClientSingleton.instance.optionParams = {
+    //   controllers:
+    //     options.controllers && options.controllers.length
+    //       ? Array.from(options.controllers)
+    //       : [],
+    //   listeners:
+    //     options.listeners && options.listeners.length
+    //       ? Array.from(options.listeners)
+    //       : [],
+    // };
+
+    return {
+      module: DiscordiaModule,
+    };
+
+    //   let providers = createDiscordProviders(
+    //     DiscordClientSingleton.instance.client,
+    //     this.pseudo,
+    //   );
+    // } catch (error) {
+    //   console.log('Damn bruh!', error);
+    // }
   }
 
   static async register({
     clientToken,
     options,
   }: DiscordiaRegisterClientParams): Promise<DynamicModule> {
-    const { listeners } = options;
+    const {
+      listeners,
+      controllers,
+      timeoutDurationInSeconds,
+    } = DiscordClientSingleton.instance.optionParams;
 
     if (!clientToken.length)
       throw new Error(
@@ -108,7 +126,12 @@ export class DiscordiaModule {
       );
 
     return new Promise((resolve, reject) => {
-      const preferedTimeout = getPreferedTimeoutDuration(options);
+      const preferedTimeout = timeoutDurationInSeconds
+        ? timeoutDurationInSeconds
+        : options.timeoutDurationInSeconds
+        ? options.timeoutDurationInSeconds
+        : 10000;
+
       const timeout = setTimeout(
         () => reject('Cannot stablish connection with the Discord API'),
         preferedTimeout,
@@ -125,21 +148,19 @@ export class DiscordiaModule {
       });
 
       client.on('ready', () => {
+        console.log('Discord client ready');
         clearTimeout(timeout);
 
-        if (options && listeners.length) {
-          console.log('Adding listeners from Registry');
-          listeners.map(listener => {
-            const { eventName, handler } = listener;
-            client.on(eventName, handler);
+        if (options) {
+          options.listeners?.concat(listeners).map(listener => {
+            client.on(listener.eventName, listener.handler);
           });
         }
 
-        const pseudo = 'Discordia';
-        const providers = createDiscordProviders(client, pseudo);
+        const providers = createDiscordProviders(client, this.pseudo);
 
         return resolve({
-          controllers: options.controllers || [],
+          controllers: options.controllers?.concat(controllers) || [],
           module: DiscordiaModule,
           providers,
           exports: providers,
@@ -148,8 +169,3 @@ export class DiscordiaModule {
     });
   }
 }
-
-export const getPreferedTimeoutDuration = (options?: RegisterClientOptions) =>
-  options && options.timeoutDurationInSeconds
-    ? options.timeoutDurationInSeconds * 1000
-    : 10000;

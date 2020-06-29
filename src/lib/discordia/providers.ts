@@ -1,8 +1,8 @@
-import { Client } from 'discord.js';
 import { Provider } from '@nestjs/common';
+import { BotClient } from './bot.client';
 
 export const createDiscordProviders = (
-  client: Client,
+  client: BotClient,
   providerName: string,
 ): Provider<any>[] => [
   {

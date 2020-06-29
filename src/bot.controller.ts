@@ -1,9 +1,9 @@
 import { Controller, Inject, Get } from '@nestjs/common';
-import { Client } from 'discord.js';
+// import { Client } from 'discord.js';
 
 @Controller('bot')
 export class BotController {
-  constructor(@Inject('Discordia') private discordBot: Client) {}
+  //   constructor(@Inject('Discordia') private discordBot: Client) {}
 
   @Get('/')
   async sendMessage() {
@@ -12,12 +12,11 @@ export class BotController {
     //   .channels.find('name', 'bot');
     //   const set =  this.discordBot.guilds.first.me
     // this.discordBot.
-
-    this.discordBot.on('message', msg => {
-      console.log('NEW MESSAGE ', msg);
-      if (msg.content === 'ping') {
-        msg.reply('Pong!');
-      }
-    });
+    // this.discordBot.on('message', msg => {
+    //   console.log('NEW MESSAGE ', msg);
+    //   if (msg.content === 'ping') {
+    //     msg.reply('Pong!');
+    //   }
+    // });
   }
 }
